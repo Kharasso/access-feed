@@ -311,7 +311,8 @@ async def broadcast(item: DealItem):
     stale = []
     for ws in CLIENTS:
         try:
-            await ws.send_json(DealEnvelope(data=item).model_dump())
+            # await ws.send_json(DealEnvelope(data=item).model_dump())
+            await ws.send_text(DealEnvelope(data=item).model_dump_json())
         except Exception:
             stale.append(ws)
     for s in stale:
@@ -321,20 +322,41 @@ async def broadcast(item: DealItem):
             pass
 
 
+# @app.websocket("/ws")
+# async def ws_endpoint(ws: WebSocket):
+#     await ws.accept()
+#     CLIENTS.append(ws)
+#     # # send current top items on connect
+#     # for itm in list(SEEN.values())[:30]:
+#     # send current top relevant items on connect
+#     top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
+#     top.sort(key=lambda x: x.score, reverse=True)
+#     for itm in top[:20]:
+#         # await ws.send_json(DealEnvelope(data=itm).model_dump())
+#         await ws.send_text(DealEnvelope(data=itm).model_dump_json()) 
+#     try:
+#         while True:
+#             await ws.receive_text() # keep alive; ignore content
+#     except WebSocketDisconnect:
+#         try:
+#             CLIENTS.remove(ws)
+#         except ValueError:
+#             pass
+
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     CLIENTS.append(ws)
-    # # send current top items on connect
-    # for itm in list(SEEN.values())[:30]:
-    # send current top relevant items on connect
-    top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
-    top.sort(key=lambda x: x.score, reverse=True)
-    for itm in top[:20]:
-        await ws.send_json(DealEnvelope(data=itm).model_dump())
+    try:
+        top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
+        top.sort(by=lambda x: x.score, reverse=True)  # or key=
+        for itm in top[:20]:
+            await ws.send_text(DealEnvelope(data=itm).model_dump_json())
+    except Exception as e:
+        print("initial send error:", repr(e))
     try:
         while True:
-            await ws.receive_text() # keep alive; ignore content
+            await ws.receive_text()  # keepalive
     except WebSocketDisconnect:
         try:
             CLIENTS.remove(ws)
