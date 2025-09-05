@@ -32,6 +32,7 @@ export function wsUrlFromApi(apiBase) {
     // 3) Last-resort: same host as current page (works if backend is reverse-proxied under same domain)
     const { protocol, host } = window.location;
     const wsProto = protocol === "https:" ? "wss:" : "ws:";
+    console.log(`${wsProto}//${host}/ws`);
     return `${wsProto}//${host}/ws`;
   }
 }
