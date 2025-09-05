@@ -1,14 +1,14 @@
 // // api.js
 // const DEFAULT_API = `${location.protocol}//${location.hostname}:8080`;
 // export const API =
-//   (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim()) ||
+//   (import.meta?.env?.VITE_API_URL && import.meta.env.VITE_API_URL.trim()) ||
 //   DEFAULT_API;
 
 const getDefaultApi = () => {
   // In production, don't append :8080
   if (import.meta.env.PROD) {
     // This won't work, but at least won't hang
-    console.error('API base URL not configured. Set VITE_API_BASE in environment variables.');
+    console.error('API base URL not configured. Set VITE_API_URL in environment variables.');
     return `${location.protocol}//${location.hostname}`;
   }
   // In development, use localhost:8080
@@ -16,7 +16,7 @@ const getDefaultApi = () => {
 };
 
 export const API = 
-  (import.meta?.env?.VITE_API_BASE && import.meta.env.VITE_API_BASE.trim()) ||
+  (import.meta?.env?.VITE_API_URL && import.meta.env.VITE_API_URL.trim()) ||
   getDefaultApi();
 
 console.log('API Base URL:', API); 
