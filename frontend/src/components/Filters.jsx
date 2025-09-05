@@ -2,7 +2,7 @@ import { useState } from "react";
 import { setPreferences } from "../api";
 
 export default function Filters({ onApplied }) {
-  const [keywords, setKeywords] = useState("CapEx, unitranche");
+  const [keywords, setKeywords] = useState("CapEx, report");
   const [firms, setFirms] = useState("KKR, Blackstone");
   const [sectors, setSectors] = useState("Industrial, Healthcare");
   const [geos, setGeos] = useState("US, Europe");
