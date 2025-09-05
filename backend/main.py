@@ -9,6 +9,7 @@ from dateutil import parser as dtparser
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from urllib.parse import urlparse
 
 
 from models import Preferences, DealItem, DealEnvelope
@@ -25,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+ALLOWED_ORIGINS = None  # e.g., {"https://your-frontend.vercel.app"}
+ALLOWED_SUFFIXES = (".vercel.app",)
 
 
 # --- In-memory state (MVP) ---
@@ -346,22 +350,63 @@ async def broadcast(item: DealItem):
 async def root():
     return {"ok": True, "service": "deal-feed"}
 
+# @app.websocket("/ws")
+# async def ws_endpoint(ws: WebSocket):
+#     await ws.accept()
+#     CLIENTS.append(ws)
+#     try:
+#         top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
+#         # top.sort(by=lambda x: x.score, reverse=True)  # or key=
+#         top.sort(key=lambda x: getattr(x, "score", 0), reverse=True)
+#         for itm in top[:20]:
+#             await ws.send_text(DealEnvelope(data=itm).model_dump_json())
+#     except Exception as e:
+#         print("initial send error:", repr(e))
+#     try:
+#         while True:
+#             await ws.receive_text()  # keepalive
+#     except WebSocketDisconnect:
+#         try:
+#             CLIENTS.remove(ws)
+#         except ValueError:
+#             pass
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
+    # ---- (Optional) origin check BEFORE accept ----
+    if ALLOWED_ORIGINS is not None:
+        origin = ws.headers.get("origin")
+        ok = False
+        if origin:
+            host = urlparse(origin).hostname or ""
+            ok = origin in ALLOWED_ORIGINS or any(host.endswith(sfx) for sfx in ALLOWED_SUFFIXES)
+        if not ok:
+            # IMPORTANT: close AND RETURN so we never hit receive_text()
+            await ws.close(code=1008)  # policy violation
+            return
+
+    # ---- Accept FIRST, then everything else ----
     await ws.accept()
     CLIENTS.append(ws)
+
+    # ---- Initial send guarded so one bad item doesn't kill the socket ----
     try:
         top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
-        # top.sort(by=lambda x: x.score, reverse=True)  # or key=
-        top.sort(key=lambda x: getattr(x, "score", 0), reverse=True)
+        top.sort(key=lambda x: getattr(x, "score", 0), reverse=True)  # key=, not by=
         for itm in top[:20]:
+            # Use JSON string to avoid datetime serialization issues
             await ws.send_text(DealEnvelope(data=itm).model_dump_json())
     except Exception as e:
-        print("initial send error:", repr(e))
+        print("initial send error:", repr(e))  # keep the connection alive
+
+    # ---- Receive loop ----
     try:
         while True:
-            await ws.receive_text()  # keepalive
-    except WebSocketDisconnect:
+            try:
+                _ = await ws.receive_text()  # keepalive; ignore payload
+            except WebSocketDisconnect:
+                break
+    finally:
+        # Always remove the client once we're done
         try:
             CLIENTS.remove(ws)
         except ValueError:
