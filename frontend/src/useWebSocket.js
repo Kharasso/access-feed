@@ -1,17 +1,38 @@
 import { useEffect, useRef } from "react";
 import { API } from "./api";
 
-function wsUrlFromApi(apiBase) {
+// function wsUrlFromApi(apiBase) {
+//   try {
+//     const u = new URL(apiBase);
+//     u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+//     u.pathname = "/ws";
+//     u.search = "";
+//     u.hash = "";
+//     return u.toString();
+//   } catch {
+//     const proto = location.protocol === "https:" ? "wss://" : "ws://";
+//     return `${proto}${location.hostname}:8080/ws`;
+//   }
+// }
+export function wsUrlFromApi(apiBase) {
+  // 1) Explicit override (recommended for Vercel: set VITE_WS_URL in Project → Settings → Environment Variables)
+  const envWs = import.meta.env?.VITE_WS_URL;
+  if (envWs) return envWs;
+
+  // 2) Derive from API base (e.g., https://your-backend.onrender.com -> wss://your-backend.onrender.com/ws)
   try {
     const u = new URL(apiBase);
     u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
-    u.pathname = "/ws";
+    // ensure single /ws regardless of existing path
+    u.pathname = (u.pathname.replace(/\/+$/, "") + "/ws").replace(/\/{2,}/g, "/");
     u.search = "";
     u.hash = "";
     return u.toString();
   } catch {
-    const proto = location.protocol === "https:" ? "wss://" : "ws://";
-    return `${proto}${location.hostname}:8080/ws`;
+    // 3) Last-resort: same host as current page (works if backend is reverse-proxied under same domain)
+    const { protocol, host } = window.location;
+    const wsProto = protocol === "https:" ? "wss:" : "ws:";
+    return `${wsProto}//${host}/ws`;
   }
 }
 
