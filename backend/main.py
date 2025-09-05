@@ -342,6 +342,9 @@ async def broadcast(item: DealItem):
 #             CLIENTS.remove(ws)
 #         except ValueError:
 #             pass
+@app.get("/")
+async def root():
+    return {"ok": True, "service": "deal-feed"}
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
@@ -349,7 +352,8 @@ async def ws_endpoint(ws: WebSocket):
     CLIENTS.append(ws)
     try:
         top = [i for i in SEEN.values() if getattr(i, "score", 0) > 0]
-        top.sort(by=lambda x: x.score, reverse=True)  # or key=
+        # top.sort(by=lambda x: x.score, reverse=True)  # or key=
+        top.sort(key=lambda x: getattr(x, "score", 0), reverse=True)
         for itm in top[:20]:
             await ws.send_text(DealEnvelope(data=itm).model_dump_json())
     except Exception as e:
