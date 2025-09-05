@@ -303,11 +303,19 @@ async def feed(limit: int = 50):
 #     for k, v in SEEN.items():
 #         SEEN[k] = score_item(v, p)
 #     return {"ok": True}
+# @app.post("/preferences")
+# async def set_prefs(p: Preferences):
+#     USER_PREFS[p.user_id] = p
+#     for k, v in SEEN.items():
+#         SEEN[k] = score_item(v, p)
+#     return {"ok": True, "applied_at": datetime.now(timezone.utc).isoformat()}
 @app.post("/preferences")
 async def set_prefs(p: Preferences):
+    print(f"Received preferences request: {p}")  # Add logging
     USER_PREFS[p.user_id] = p
     for k, v in SEEN.items():
         SEEN[k] = score_item(v, p)
+    print(f"Preferences applied for user {p.user_id}")  # Add logging
     return {"ok": True, "applied_at": datetime.now(timezone.utc).isoformat()}
 
 # ---- WebSocket ----
